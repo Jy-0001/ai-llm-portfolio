@@ -1,9 +1,12 @@
+import os
+from dotenv import load_dotenv
+load_dotenv()
 # 结构化数据写⼊neo4j
     # 配置neo4j：
 from neo4j import GraphDatabase
 NEO4J_CONFIG = {
     'uri' : 'neo4j://192.168.110.247:7687',
-    'auth' : ('neo4j', 'neo4jneo4j'),
+    'auth' : (os.getenv("NEO4J_USER", "neo4j"), os.getenv("NEO4J_PASSWORD", "neo4j")),
     'encrypted' : False 
     } # encrypted代表是否加密
     #代码实现：

@@ -1,3 +1,6 @@
+import os
+from dotenv import load_dotenv
+load_dotenv()
 # neo4j:可视化spo关系
     # 命令：
         # create命令：
@@ -52,7 +55,7 @@ from class19_red_spider.build_medicalgraph import GraphDatabase
 uri = 'bolt://192.168.110.247:7687' # 5.x版本用这个
 # uri = 'bolt://0.0.0.0:7687' # 3.x版本用这个
 
-driver = GraphDatabase.driver(uri, auth=('neo4j', 'neo4jneo4j'), max_connection_lifetime=100) # 创建驱动实例
+driver = GraphDatabase.driver(uri, auth=(os.getenv("NEO4J_USER", "neo4j"), os.getenv("NEO4J_PASSWORD", "neo4j")), max_connection_lifetime=100) # 创建驱动实例
 
 with driver.session() as session:
     cypher = "create(p:Company) set p.name='算法工程师' return p.name"
@@ -76,7 +79,7 @@ def _some_operations(tx, cat_name, mouse_name):
 
 uri = 'neo4j://192.168.110.247:7687'
 
-driver = GraphDatabase.driver(uri, auth=('neo4j', 'neo4jneo4j'))
+driver = GraphDatabase.driver(uri, auth=(os.getenv("NEO4J_USER", "neo4j"), os.getenv("NEO4J_PASSWORD", "neo4j")))
 
 with driver.session() as session:
     session.execute_write(_some_operations, cat_name='tom', mouse_name='jerry')

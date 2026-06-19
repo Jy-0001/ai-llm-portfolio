@@ -33,7 +33,6 @@ from model import ZhipuAIEmbeddings, create_deepseek_client, generate_deepseek_a
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
 app = FastAPI()
 
-os.environ['DEEPSEEK_API_KEY'] = os.getenv("DEEPSEEK_API_KEY")
 deepseek_api_key = os.getenv("DEEPSEEK_API_KEY")
 
 # 初始化模型和数据库连接

@@ -1,0 +1,23 @@
+# 03 · 医疗 Agent（知识图谱 + 生产级缓存）—— 运行依赖
+# 底座见仓库根 ENVIRONMENT.md。本项目复用 01 的模型层（model.py）。
+
+python-dotenv
+
+# LangChain 1.x（代码使用 langchain_classic 命名空间）
+langchain>=1.0
+langchain-classic
+langchain-community
+langchain-milvus
+pymilvus>=2.4.6
+
+# 知识图谱 / 缓存
+neo4j>=5.20
+redis>=5.0
+
+# 模型 / 服务
+zai-sdk            # 智谱 embedding
+openai>=1.40       # DeepSeek（或本地 Qwen2.5-32B，见 01 model.py）
+fastapi>=0.111
+uvicorn>=0.30
+pydantic>=2.8
+requests

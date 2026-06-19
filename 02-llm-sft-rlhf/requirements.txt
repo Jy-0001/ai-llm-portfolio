@@ -1,0 +1,25 @@
+# 02 · SFT/RLHF —— 训练与评估依赖
+# 底座(Python 3.10 / CUDA 12.1 / torch 2.3.x cu121)见仓库根 ENVIRONMENT.md，
+# torch 与 flash-attn 用 cu121 wheel 单独装。
+
+# ---- 训练（Qwen2.5-32B QLoRA + DeepSpeed）----
+# LLaMA-Factory 建议从源码装：git clone + pip install -e ".[torch,metrics,deepspeed,bitsandbytes]"
+transformers>=4.44
+peft>=0.12
+trl>=0.9.6
+accelerate>=0.33
+deepspeed>=0.14
+bitsandbytes>=0.43
+datasets>=2.20
+sentencepiece
+einops
+swanlab            # 训练日志可视化（替代 wandb）
+
+# ---- 评估 / 裁判 ----
+openai>=1.40       # DeepSeek / GPT 作为 LLM-as-judge
+zai-sdk
+python-dotenv
+
+# ---- 压测（建议单独 venv，vllm 会锁 torch 版本，见 ENVIRONMENT.md 坑3）----
+# vllm
+# locust

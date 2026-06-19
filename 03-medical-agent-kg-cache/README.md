@@ -22,9 +22,22 @@
 **收益**：缓存命中后相同问题响应时间约 10s → 5ms（≈2000x）；API 缓存命中成本约为未命中的 1/10。
 **沉淀**：将"查缓存 → 加锁 → 计算 → 写回"封装为 `get_or_compute` 模板方法 + 回调，业务层一行调用屏蔽全部并发复杂度。
 
+## 运行（AutoDL）
+> 底座见仓库根 `ENVIRONMENT.md`；本项目复用 01 的模型层（`47_medical_1.1/model.py`），推理可走 DeepSeek API 或本地 Qwen2.5-32B。
+```bash
+pip install -r 03-medical-agent-kg-cache/requirements.txt
+cp .env.example .env        # 填 ZHIPU/DEEPSEEK key 与 NEO4J_*、REDIS_* 配置
+# 需本机/容器内有 neo4j 与 redis-server
+cd 03-medical-agent-kg-cache/48_neo4j_redis
+python build_medicalgraph.py   # 构建医疗知识图谱
+python main.py                 # 起 Agent 服务
+# Redis 优化版见 ../49_modical_2.0/new_app.py
+```
+Neo4j 口令、Redis 地址等全部走环境变量（见 `.env.example` 的 `NEO4J_*` / `REDIS_*`），不再硬编码。
+
 ## 关键文件
-- `48_neo4j_redis/` — Agent 主体：`main.py`、`build_medicalgraph.py`、`validators.py`、`vectors.py`、`知识图谱与缓存_笔记.py`
-- `49_modical_2.0/` — Redis 优化笔记
+- `48_neo4j_redis/` — Agent 主体：`main.py`、`build_medicalgraph.py`、`validators.py`、`vectors.py`、`config.py`（env 化）、`知识图谱与缓存_笔记.py`
+- `49_modical_2.0/` — Redis 生产级优化（`new_redis.py` / `new_app.py`）
 
 ## 技术栈
-LangChain · neo4j · Redis · Milvus · FastAPI · Pydantic · Lua · DeepSeek
+LangChain · neo4j · Redis · Milvus · FastAPI · Pydantic · Lua · Qwen2.5-32B / DeepSeek

@@ -1,0 +1,46 @@
+# Qwen2.5-32B-Instruct · DPO 偏好对齐 · 在 SFT 适配器之上 · QLoRA(4-bit) · ZeRO-3
+# 用法: llamafactory-cli train train_configs/qwen2.5_32b_dpo_qlora.yaml
+
+### model
+model_name_or_path: /root/autodl-tmp/models/Qwen/Qwen2.5-32B-Instruct
+adapter_name_or_path: /root/autodl-tmp/output/qwen2.5-32b-sft-qlora   # 接着 SFT 的结果做 DPO
+quantization_bit: 4
+quantization_method: bitsandbytes
+trust_remote_code: true
+
+### method
+stage: dpo
+do_train: true
+finetuning_type: lora
+lora_rank: 64
+lora_alpha: 128
+lora_target: all
+pref_beta: 0.1                     # DPO 偏离参考模型强度
+pref_loss: sigmoid                 # 标准 DPO 损失
+
+### dataset
+dataset: medical_dpo              # (prompt, chosen, rejected) 偏好三元组，约 1 万条
+template: qwen
+cutoff_len: 2048
+max_samples: 10000
+overwrite_cache: true
+preprocessing_num_workers: 16
+
+### output
+output_dir: /root/autodl-tmp/output/qwen2.5-32b-dpo-qlora
+logging_steps: 10
+save_steps: 500
+plot_loss: true
+overwrite_output_dir: true
+report_to: swanlab
+
+### train
+per_device_train_batch_size: 1
+gradient_accumulation_steps: 16
+learning_rate: 5.0e-6             # DPO 学习率显著低于 SFT
+num_train_epochs: 1.0
+lr_scheduler_type: cosine
+warmup_ratio: 0.03
+bf16: true
+gradient_checkpointing: true
+deepspeed: train_configs/ds_z3_offload.json

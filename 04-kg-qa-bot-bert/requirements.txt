@@ -1,0 +1,25 @@
+# 04 · BERT 意图识别 + 知识图谱问答机器人 —— 运行依赖
+# 底座见仓库根 ENVIRONMENT.md。本项目为 LLM 之前的确定性问答基线，模型为 bert-base-chinese。
+
+python-dotenv
+
+# 深度学习 / NLP
+torch                 # 按 ENVIRONMENT.md 用 cu121 wheel 安装
+transformers>=4.40
+datasets>=2.20
+seqeval               # 序列标注/NER 评估
+scikit-learn          # 意图分类指标
+numpy
+
+# 知识图谱
+neo4j>=5.20
+py2neo                # 部分早期脚本使用
+
+# 爬虫 / 服务
+requests
+beautifulsoup4
+lxml
+flask
+
+# 可选：v2 生成模块走 LLM（DeepSeek / 本地 Qwen2.5-32B）
+openai>=1.40

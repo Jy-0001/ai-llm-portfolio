@@ -1,0 +1,45 @@
+# Qwen2.5-32B-Instruct · SFT · QLoRA(4-bit) · DeepSpeed ZeRO-3
+# 用法: llamafactory-cli train train_configs/qwen2.5_32b_sft_qlora.yaml
+# 硬件: 4×RTX 4090(24G)；32B 全参放不下，故用 QLoRA 4-bit + ZeRO-3 offload。
+
+### model
+model_name_or_path: /root/autodl-tmp/models/Qwen/Qwen2.5-32B-Instruct
+quantization_bit: 4                 # QLoRA：4-bit NF4 量化加载基座
+quantization_method: bitsandbytes
+trust_remote_code: true
+
+### method
+stage: sft
+do_train: true
+finetuning_type: lora
+lora_rank: 64                       # 32B 用更大秩（4B 时 16 足够）
+lora_alpha: 128
+lora_dropout: 0.05
+lora_target: all
+
+### dataset
+dataset: medical_sft               # 在 data/dataset_info.json 里注册你的医疗 SFT 数据
+template: qwen
+cutoff_len: 2048
+max_samples: 50000                 # 实际约 5 万条
+overwrite_cache: true
+preprocessing_num_workers: 16
+
+### output
+output_dir: /root/autodl-tmp/output/qwen2.5-32b-sft-qlora
+logging_steps: 10
+save_steps: 500
+plot_loss: true
+overwrite_output_dir: true
+report_to: swanlab                 # 训练曲线可视化（AutoDL 友好，替代 wandb）
+
+### train
+per_device_train_batch_size: 1     # 32B 显存吃紧 → 微批 1
+gradient_accumulation_steps: 16    # 用累积补回有效 batch ≈ 16
+learning_rate: 1.0e-4              # LoRA 学习率，不随模型规模线性缩放
+num_train_epochs: 3.0
+lr_scheduler_type: cosine
+warmup_ratio: 0.03
+bf16: true
+gradient_checkpointing: true       # 32B 必开，省激活显存
+deepspeed: train_configs/ds_z3_offload.json
