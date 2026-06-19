@@ -12,12 +12,12 @@
 - **知识蒸馏 / 剪枝**：以更小模型逼近大模型效果、裁剪冗余参数，进一步降部署成本。
 
 ## 关键文件
-- `34_macbert4csc/` — MacBERT4CSC 中文纠错
-- `31_SpanPointer/` — SpanPointer 指针抽取
-- `32_SimCSE/` — SimCSE 对比学习句向量
-- `35_ONNX/` — ONNX 导出与推理加速
-- `12-quantization-pruning-Albert-T5/` — 量化（`quantization.py`）、剪枝（`pruning.py`）、ALBERT/T5
-- `14_knowledge_distil/` — 知识蒸馏
+- `macbert_csc/` — MacBERT4CSC 中文纠错
+- `span_pointer_ner/` — SpanPointer 指针抽取
+- `simcse/` — SimCSE 对比学习句向量
+- `onnx_export/` — ONNX 导出与推理加速
+- `quantization_pruning/` — 量化（`quantization.py`）、剪枝（`pruning.py`）、ALBERT/T5
+- `knowledge_distillation/` — 知识蒸馏
 
 ## 技术栈
 MacBERT4CSC · SpanPointer · SimCSE · ONNX · PyTorch · 量化 / 蒸馏 / 剪枝

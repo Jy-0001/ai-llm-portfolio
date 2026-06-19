@@ -19,7 +19,7 @@ pip install -r 01-medical-rag-qa/requirements.txt
 cp .env.example .env        # 然后填入你自己的 ZHIPU_API_KEY / DEEPSEEK_API_KEY
 
 # 3) 进项目目录
-cd 01-medical-rag-qa/47_medical_1.1
+cd 01-medical-rag-qa/rag_pipeline
 
 # 4)（可选，USE_LOCAL_LLM=1 时）下载本地基座到数据盘
 python ../download_models.py
@@ -38,13 +38,13 @@ curl -X POST http://127.0.0.1:8103/ -H "Content-Type: application/json" \
 环境变量（全部见 `.env.example`）：`USE_LOCAL_LLM`（0=DeepSeek API / 1=本地 Qwen2.5-32B）、`LLM_MODEL_PATH`、`MILVUS_TEXT_URI`、`MILVUS_PDF_URI`、`DOCSTORE_PATH`、`API_PORT`。
 
 ## 评估
-五维度 RAG 评估：检索层（Recall@K / Precision@K / MRR / nDCG）、生成一致性层（Faithfulness / Groundedness）、系统层（P95/P99 延迟 / QPS / 缓存命中率），离线评估 → 压测回放 → 指标对比驱动迭代。评估脚本见 `50_agent_evaluate/eval.py`。
+五维度 RAG 评估：检索层（Recall@K / Precision@K / MRR / nDCG）、生成一致性层（Faithfulness / Groundedness）、系统层（P95/P99 延迟 / QPS / 缓存命中率），离线评估 → 压测回放 → 指标对比驱动迭代。评估脚本见 `evaluation/eval.py`。
 
 ## 目录
-- `47_medical_1.1/` — **主体（推荐入口）**：`config.py` 集中配置、`model.py` 模型层、`vectors.py` 建索引、`agent2.py` 多路召回服务；`知识点单独实现/` 为各召回增强单点 demo。
-- `46_langchain_medical_1/` — 早期基线版本（单路检索链）。
-- `50_agent_evaluate/` — RAG 评估。
-- `41_llm_RAG/` — SimCSE 语义检索 + FastAPI 流式服务与压测。
+- `rag_pipeline/` — **主体（推荐入口）**：`config.py` 集中配置、`model.py` 模型层、`vectors.py` 建索引、`agent2.py` 多路召回服务；`retrieval_techniques/` 为各召回增强单点 demo。
+- `rag_baseline/` — 早期基线版本（单路检索链）。
+- `evaluation/` — RAG 评估。
+- `semantic_retrieval/` — SimCSE 语义检索 + FastAPI 流式服务与压测。
 
 ## 技术栈
 LangChain · Milvus(dense+sparse) · BM25 · RRF · bce-reranker · HyDE/Step-back/RAG-Fusion · 智谱 embedding-3 · Qwen2.5-32B / DeepSeek · FastAPI

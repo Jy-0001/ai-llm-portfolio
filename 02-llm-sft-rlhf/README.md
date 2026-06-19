@@ -33,7 +33,7 @@ llamafactory-cli train 02-llm-sft-rlhf/train_configs/qwen2.5_32b_dpo_qlora.yaml
 ## 强化学习算法对比
 手写实现并对比：`DPO` · `PPO` · `GRPO` · `GSPO` · `SAPO`（见 `27`~`29`）。
 
-## 评估（`42_eval/`）
+## 评估（`evaluation/`）
 通用能力 **MMLU-Pro**（防灾难性遗忘）、垂类 **embedding 语义相似度**、指令跟随 **LLM-as-judge**（DeepSeek 裁判），辅以安全红队与压测（TTFT/TPS/P95·P99，`stress_test/`）。
 
 ## 技术栈
