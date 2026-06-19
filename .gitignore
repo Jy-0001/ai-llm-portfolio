@@ -1,0 +1,47 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+env/
+.ipynb_checkpoints/
+
+# 模型权重 / 大文件（不入库）
+*.bin
+*.safetensors
+*.pt
+*.pth
+*.onnx
+*.ckpt
+*.h5
+
+# 数据集（不入库）
+*.csv
+*.tsv
+*.jsonl
+*.npy
+*.npz
+data/
+dataset/
+datasets/
+
+# 训练产物
+output/
+outputs/
+checkpoints/
+runs/
+logs/
+*.log
+wandb/
+
+# 环境 / 密钥
+.env
+*.env
+config_local.*
+
+# 系统 / IDE
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
