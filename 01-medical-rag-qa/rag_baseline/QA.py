@@ -1,23 +1,29 @@
+"""ParentDocument / MultiVector retrieval demo: index generated sub-questions,
+retrieve the parent document via doc_id mapping."""
 import os
+import uuid
+import logging
+
 from dotenv import load_dotenv
-load_dotenv()
-import os
-import langchain
-import openai
 from langchain_core.stores import InMemoryStore
 from langchain_core.documents import Document
 from langchain_classic.retrievers import MultiVectorRetriever
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.prompts import ChatPromptTemplate
-import uuid
-import os
 from langchain_openai import ChatOpenAI
 from langchain_chroma import Chroma
 from zai import ZhipuAiClient
 from langchain.embeddings.base import Embeddings
 
-# 实例化智谱client对象
+load_dotenv()
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s | %(levelname)-8s | %(name)s | %(message)s",
+)
+logger = logging.getLogger(__name__)
+
 client = ZhipuAiClient(api_key=os.getenv("ZHIPU_API_KEY"))
+
 
 class ZhipuAIEmbeddings(Embeddings):
     def __init__(self, client):
@@ -26,32 +32,22 @@ class ZhipuAIEmbeddings(Embeddings):
     def embed_documents(self, texts):
         embeddings = []
         for text in texts:
-            # 调用清华智谱最新版本的 embeddings 方法
-            response = self.client.embeddings.create(
-                model="embedding-3",
-                input=[text],
-            )
+            response = self.client.embeddings.create(model="embedding-3", input=[text])
             embeddings.append(response.data[0].embedding)
         return embeddings
 
     def embed_query(self, text):
-        # 查询文档
         return self.embed_documents([text])[0]
+
 
 embeddings = ZhipuAIEmbeddings(client=client)
 
-# 自己申请DeepSeek的api_key
-
-# 从环境变量获取 DeepSeek API Key
-deepseek_api_key = os.getenv("DEEPSEEK_API_KEY")
-
-# 初始化 DeepSeek 模型
 llm = ChatOpenAI(
-    model="deepseek-chat",  # 或者使用 "deepseek-reasoner"
-    openai_api_key=deepseek_api_key,  # 你的 DeepSeek API 密钥
-    base_url="https://api.deepseek.com/v1",  # DeepSeek 的 API 端点
-    temperature=0.7,  # 控制创造性, 根据需求调整
-    max_tokens=2048,  # 根据模型最大上下文窗口调整
+    model="deepseek-chat",
+    openai_api_key=os.getenv("DEEPSEEK_API_KEY"),
+    base_url="https://api.deepseek.com/v1",
+    temperature=0.7,
+    max_tokens=2048,
 )
 
 docs = [
@@ -82,7 +78,7 @@ docs = [
 ]
 
 doc_ids = [doc.metadata["doc_id"] for doc in docs]
-print('doc_ids:', doc_ids)
+logger.info("doc_ids: %s", doc_ids)
 
 question_gen_prompt_str = (
     "你是一位AI医学专家。请根据以下文档内容,生成3个用户可能会提出的,高度相关的问题。\n"
@@ -104,13 +100,13 @@ for i, doc in enumerate(docs):
     for q in generated_questions:
         sub_docs.append(Document(page_content=q, metadata={"doc_id": doc_id}))
 
-print("创建Chroma向量数据库, 并添加文档...")
+logger.info("Building Chroma vector store from generated sub-questions")
 vectorstore_qa = Chroma.from_documents(documents=sub_docs, embedding=embeddings)
 
 doc_store = InMemoryStore()
 doc_store.mset(list(zip(doc_ids, docs)))
 
-print("创建MultiVectorRetriever检索器...")
+logger.info("Building MultiVectorRetriever")
 multivector_retriever = MultiVectorRetriever(
     vectorstore=vectorstore_qa,
     docstore=doc_store,
@@ -119,4 +115,4 @@ multivector_retriever = MultiVectorRetriever(
 
 user_query = "糖尿病患者有什么饮食建议?"
 retrieved_qa_docs = multivector_retriever.invoke(user_query)
-print('retrieved_qa_docs:', retrieved_qa_docs)
+logger.info("retrieved_qa_docs: %s", retrieved_qa_docs)

@@ -157,11 +157,11 @@ class ModelEvaluator:
                 num_finetune += 1
 
         if num_base * 0.95 > num_finetune:
-            improvement = "显著下降 ❌"
+            improvement = "regression"
         elif num_finetune > num_base * 1.05:
-            improvement = "显著提升 ✅"
+            improvement = "improved"
         else:
-            improvement = "基本持平 ➡️"
+            improvement = "no significant change"
 
         return {
             "summary": {

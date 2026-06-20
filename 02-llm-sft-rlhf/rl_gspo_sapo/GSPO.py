@@ -1,32 +1,13 @@
-# GSPO (Group Sequence Policy Optimization) 算法.
-    # 和GRPO对比：
-        # 两者都属于‘组相对策略优化’
-        # 核心差异：Advantage的计算粒度和对齐方式：
-            # GRPO (DeepSeek):
-                # 序列级/response级A：GRPO里每个 response 的所有 token 共享同一个优势A^,也就是A是序列级的
-                # ***token级ratio：虽然公式中写的是序列级别概率连乘，但代码实现时是单个token算ratio，参与clip/loss后再对token聚合，所以实现起来还是属于token级别
-                    # 一句话总结：token粒度进入目标
-            # GSPO (Alibaba):
-                # 序列级A：但是和GRPO不同，GSPO采用不同序列中的同一时间步的reward做组进行组相对优势
-                # 序列级ratio：GSPO在公式以及代码实现ratio时是将单个token概率连乘，再clip，并且做长度归一化1/∣y∣，属于序列级处理
-                    # 重点：连乘相当于组成序列，然后长度归一化
-                    # 一句话总结：先合成一个 sequence 级 ratio，再去 clip 和优化
-    # 算法细节：详细见课件pdf
-        # 公式：JGSPO​(θ)=Ex∼D, {yi​}i=1G​∼πθold​​(⋅∣x)​[G1​i=1∑G​min(si​(θ)Ai​,clip(si​(θ),1−ϵ,1+ϵ)Ai​)]
-            # x∼D：x从训练数据分布D中采样出来
-            # {yi​}i=1G​∼πθold​​(⋅∣x)：给定x后，用旧策略πθold采样出G条回答
-            # Ai​=r(x,yi​)−mean({r(x,yi​)}i=1G​)​ / std({r(x,yi​)}i=1G​) 
-                # 解释：表示第i条回答在同组回答里，相对好多少
-            # si​(θ)=(πθ​(yi​∣x) / πθold​​(yi​∣x)​)^1/|yi​|
-                # 此处的πθ​(yi​∣x)代表整条序列概率是很多 token 概率连乘：πθ​(yi​∣x)=t=1∏∣yi​∣​πθ​(yi,t​∣x,yi,<t​)
-                    # 连乘会带来问题：序列越长，乘出来越容易特别小或特别极端，所以要取下面的几何平均
-                # ^1/|yi​|:将连乘的序列级概率分布开序列长度的根号，表示取几何平均
-                    # ||：此处不代表绝对值，而是表示序列的长度
-    # 代码实现：
+"""GSPO (Group Sequence Policy Optimization).
 
-'''导入需要的库'''
+A group-relative method like GRPO, but the importance ratio is computed at the
+sequence level: per-token probabilities are multiplied and length-normalized
+(geometric mean) before clipping, instead of clipping per-token ratios. This
+demo uses step-level advantage normalization on CartPole as an analogue.
+"""
+import logging
+
 import copy
-# import gym
 import gymnasium
 import torch
 import torch.nn as nn
@@ -34,10 +15,15 @@ import torch.nn.functional as F
 import numpy as np
 import matplotlib.pyplot as plt
 import random
-from tqdm import tqdm
 import rl_utils_gspo
 
-'''实现策略网络'''
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s | %(levelname)-8s | %(name)s | %(message)s",
+)
+logger = logging.getLogger(__name__)
+
+
 class PolicyNet(nn.Module):
     def __init__(self, state_dim, hidden_dim, action_dim):
         super(PolicyNet, self).__init__()
@@ -48,8 +34,7 @@ class PolicyNet(nn.Module):
         out = F.softmax(self.fc2(out), dim=1)
         return out
 
-'''实现GSPO模型'''
-# 辅助函数: 计算 Returns
+# Discounted returns helper
 def compute_returns(rewards, gamma):
     returns = []
     R = 0
@@ -150,7 +135,6 @@ class GSPO:
             loss.backward()
             self.optimizer.step()
 
-'''训练主代码'''
 if __name__ == "__main__":
     # 配置超参数
     actor_lr = 1e-3
@@ -164,14 +148,12 @@ if __name__ == "__main__":
     
     # 设备选择
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    # 针对 Mac ⽤户
     if torch.backends.mps.is_available():
         device = torch.device('mps')
-    print(f"Using device: {device}")
-    
+    logger.info("Using device: %s", device)
+
     env_name = 'CartPole-v1'
-    # env = gym.make(env_name) # 训练时不渲染以加快速度
-    env = gymnasium.make(env_name) # 训练时不渲染以加快速度
+    env = gymnasium.make(env_name)
     
     # 设置全局随机种⼦
     random.seed(0)

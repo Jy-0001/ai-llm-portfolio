@@ -1,19 +1,19 @@
 import os
-from dotenv import load_dotenv
-load_dotenv()
-import os
-from pydantic import BaseModel
-from tqdm import tqdm
 import json
 import uuid
 import time
+import logging
+
+from dotenv import load_dotenv
+from tqdm import tqdm
 from zai import ZhipuAiClient
 from langchain.embeddings.base import Embeddings
 from langchain_core.documents import Document
 from langchain_milvus import Milvus, BM25BuiltInFunction
 
+load_dotenv()
+logger = logging.getLogger(__name__)
 
-# 实例化智谱client对象
 client = ZhipuAiClient(api_key=os.getenv("ZHIPU_API_KEY"))
 
 
@@ -68,7 +68,7 @@ class Milvus_vector():
             drop_old=False,
         )
 
-        print("✅ 已初始化创建 Milvus ‼")
+        logger.info("Milvus collection initialized")
 
         count = 10
         temp = []
@@ -78,11 +78,10 @@ class Milvus_vector():
                 self.vectorstore.aadd_documents(temp)
                 count += len(temp)
                 temp = []
-                print(f"已插入 {count} 条数据......")
+                logger.info("Inserted %d documents", count)
                 time.sleep(1)
 
-        print(f"总共插入 {count} 条数据......")
-        print("✅ 已创建 Milvus 索引完成 ‼")
+        logger.info("Total %d documents inserted; Milvus index built", count)
 
         return self.vectorstore
 
@@ -105,21 +104,17 @@ def prepare_document(file_path=['./data/data.jsonl', './data/train.jsonl']):
             docs.append(temp_doc)
             count += 1
 
-    print(f"✅ 已加载 {count} 条数据!")
+    logger.info("Loaded %d documents", count)
 
     return docs
 
 
 if __name__ == "__main__":
-    # 预处理即将插入 Milvus 的文档数据
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s | %(levelname)-8s | %(name)s | %(message)s",
+    )
     docs = prepare_document()
-    print("预处理文档数据成功......")
-
-    # 创建 Milvus 连接
     milvus_vectorstore = Milvus_vector(client)
-    print("创建Milvus连接成功......")
-
-    # 创建向量索引
     vectorstore = milvus_vectorstore.create_vector_store(docs)
-
-    print("全部初始化完成, 可以开始问答了......")
+    logger.info("Index build complete")

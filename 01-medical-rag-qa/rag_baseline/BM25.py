@@ -1,23 +1,30 @@
+"""Hybrid retrieval demo: BM25 (sparse) + dense vectors combined via
+EnsembleRetriever with weighted score fusion."""
 import os
+import uuid
+import time
+import logging
+
 from dotenv import load_dotenv
-load_dotenv()
-from langchain_core.stores import InMemoryStore
 from langchain_core.documents import Document
 from langchain_community.retrievers import BM25Retriever
-# 示例: 使用 EnsembleRetriever 实现混合搜索
 from langchain_classic.retrievers import EnsembleRetriever
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.prompts import ChatPromptTemplate
-import uuid
 from langchain_openai import ChatOpenAI
 from langchain_chroma import Chroma
 from zai import ZhipuAiClient
 from langchain.embeddings.base import Embeddings
-import os
-import time
 
-# 嵌入模型, 采用清华智谱最新的embedding-3, 实例化智谱client对象
+load_dotenv()
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s | %(levelname)-8s | %(name)s | %(message)s",
+)
+logger = logging.getLogger(__name__)
+
 client = ZhipuAiClient(api_key=os.getenv("ZHIPU_API_KEY"))
+
 
 class ZhipuAIEmbeddings(Embeddings):
     def __init__(self, client):
@@ -26,32 +33,22 @@ class ZhipuAIEmbeddings(Embeddings):
     def embed_documents(self, texts):
         embeddings = []
         for text in texts:
-            # 调用清华智谱最新版本的 embeddings 方法
-            response = self.client.embeddings.create(
-                model="embedding-3",
-                input=[text],
-            )
+            response = self.client.embeddings.create(model="embedding-3", input=[text])
             embeddings.append(response.data[0].embedding)
         return embeddings
 
     def embed_query(self, text):
-        # 查询文档
         return self.embed_documents([text])[0]
+
 
 embeddings = ZhipuAIEmbeddings(client=client)
 
-# 自己申请DeepSeek的api_key, 并充实付费
-
-# 从环境变量获取 DeepSeek API Key
-deepseek_api_key = os.getenv("DEEPSEEK_API_KEY")
-
-# 初始化 DeepSeek 模型
 llm = ChatOpenAI(
-    model="deepseek-chat",  # 或者使用 "deepseek-reasoner"
-    openai_api_key=deepseek_api_key,  # 你的 DeepSeek API 密钥
-    base_url="https://api.deepseek.com/v1",  # DeepSeek 的 API 端点
-    temperature=0.7,  # 控制创造性, 根据需求调整
-    max_tokens=2048,  # 根据模型最大上下文窗口调整
+    model="deepseek-chat",
+    openai_api_key=os.getenv("DEEPSEEK_API_KEY"),
+    base_url="https://api.deepseek.com/v1",
+    temperature=0.7,
+    max_tokens=2048,
 )
 
 docs = [
@@ -82,7 +79,7 @@ docs = [
 ]
 
 doc_ids = [doc.metadata["doc_id"] for doc in docs]
-print('doc_ids:', doc_ids)
+logger.info("doc_ids: %s", doc_ids)
 
 question_gen_prompt_str = (
     "你是一位AI医学专家. 请根据以下文档内容, 生成3个用户可能会提出的, 高度相关的问题.\n"
@@ -104,33 +101,27 @@ for i, doc in enumerate(docs):
     for q in generated_questions:
         sub_docs.append(Document(page_content=q, metadata={"doc_id": doc_id}))
 
-print("创建Chroma向量数据库, 并添加文档...")
+logger.info("Building Chroma vector store from generated sub-questions")
 vectorstore = Chroma.from_documents(documents=sub_docs, embedding=embeddings)
 
-# 假设 all_splits 和 vectorstore 已准备好
-# 初始化关键词检索器 (Sparse Retriever)
+# Sparse retriever (BM25)
 bm25_retriever = BM25Retriever.from_documents(docs)
-bm25_retriever.k = 3  # 检索3个结果
+bm25_retriever.k = 3
 
-# 初始化向量检索器 (Dense Retriever)
+# Dense retriever
 vector_retriever = vectorstore.as_retriever(search_kwargs={"k": 3})
 
-# 初始化 EnsembleRetriever, 并设置权重
-# weights参数决定了最终排序时, 两种检索器结果的权重
+# Weighted fusion of sparse and dense results
 ensemble_retriever = EnsembleRetriever(
     retrievers=[bm25_retriever, vector_retriever],
-    weights=[0.4, 0.6]  # 稍微偏重向量搜索的语义理解能力
+    weights=[0.4, 0.6],
 )
 
 query = "糖尿病患者有什么饮食建议?"
 start_time = time.time()
 retrieved_docs = ensemble_retriever.invoke(query)
-end_time = time.time()
+elapsed = time.time() - start_time
 
-print(f"混合搜索召回了 {len(retrieved_docs)} 个文档。")
-
+logger.info("Hybrid search recalled %d documents in %.2fs", len(retrieved_docs), elapsed)
 for doc in retrieved_docs:
-    print(doc.page_content)
-    print('-' * 70)
-
-print(f"检索耗时:{end_time - start_time:.2f}秒")
+    logger.info("doc: %s", doc.page_content)

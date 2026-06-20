@@ -1,40 +1,47 @@
-    #第三步：编写运行主函数
-'''导入相关库'''
-import time
+"""Training entry point for BERT-based intent classification.
+
+Usage: python run.py --model bert
+"""
+import logging
+import argparse
+from importlib import import_module
+
 import torch
 import numpy as np
+
 from train_eval import train, test
-from bert_model import *
-from importlib import import_module
-import argparse
-from utils import build_dataset, build_iterator, get_time_dif
+from utils import build_dataset, build_iterator
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s | %(levelname)-8s | %(name)s | %(message)s",
+)
+logger = logging.getLogger(__name__)
 
 parser = argparse.ArgumentParser(description='Chinese Text Classification')
-parser.add_argument('--model', type=str, required=True, help='choose a model: Bert, ERNIE') #模型选择
-# parser.add_argument('--model', type=str, default='bert_model', help='choose a model: Bert, ERNIE') #模型选择
-args = parser.parse_args() #解析参数
+parser.add_argument('--model', type=str, required=True, help='choose a model: bert')
+args = parser.parse_args()
 
-if __name__ == '__main__': #主函数
-    dataset = 'RedSpider' #数据集
-    if args.model =='bert': #模型选择
+if __name__ == '__main__':
+    dataset = 'RedSpider'
+    if args.model == 'bert':
+        model_name = 'bert_model'
+        x = import_module(model_name)
+        config = x.Config(dataset)
 
-        model_name = 'bert_model' #模型名称
-        x = import_module(model_name) #导入模型
-        config = x.Config(dataset) #构建配置文件
-        np.random.seed(1) #设置随机数种子
-        torch.manual_seed(1) #设置随机数种子
-        torch.cuda.manual_seed_all(1) #设置随机数种子
-        torch.backends.cudnn.deterministic = True #保证每次结果都一样
+        np.random.seed(1)
+        torch.manual_seed(1)
+        torch.cuda.manual_seed_all(1)
+        torch.backends.cudnn.deterministic = True
 
-        print('Loading data for Bert Model') 
-        train_iter, dev_iter, test_iter = build_dataset(config) #读取并预处理，返回样本list
-        train_iter = build_iterator(train_iter, config) #再将样本list包装成可迭代batch流：训练流
-        dev_iter = build_iterator(dev_iter, config) #验证流
-        test_iter = build_iterator(test_iter, config) #测试流
+        logger.info("Loading data for BERT model")
+        train_data, dev_data, test_data = build_dataset(config)
+        train_iter = build_iterator(train_data, config)
+        dev_iter = build_iterator(dev_data, config)
+        test_iter = build_iterator(test_data, config)
 
-        model = x.Model(config).to(config.device) #构建模型
-        train(config, model, train_iter, dev_iter) #训练
-        test(config, model, test_iter) #测试
+        model = x.Model(config).to(config.device)
+        train(config, model, train_iter, dev_iter)
+        test(config, model, test_iter)
     else:
-        print('please assign --model')
-    #调用:所在目录终端输入：python bert_model.py --model bert
+        logger.error("please assign --model")

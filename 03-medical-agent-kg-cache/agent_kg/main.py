@@ -125,7 +125,7 @@ async def generate_cypher(request: NL2CypherRequest):
     # 计算置信度, 将基础置信度设置为0.9
     confidence = 0.9
 
-    # 如果有潜在错误 ❌, 重新计算置信度 confidence
+    # Decay the confidence for each validation error found
     if errors:
         confidence = max(0.1, confidence - len(errors) * 0.1)
 

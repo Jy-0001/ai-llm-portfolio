@@ -19,7 +19,7 @@ class CypherValidator:
         # 检查是否有潜在的注入风险
         if any(keyword in cypher_query.upper() for keyword in ['DROP', 'DELETE', 'DETACH', 'REMOVE']):
             # if not any(keyword in cypher_query.upper() for keyword in ['DELETE', 'DETACH']):
-            errors.append("查询包含可能危险的操作符 ❌")
+            errors.append("查询包含可能危险的操作符")
 
         # 检查RETURN语句是否存在 (对于MATCH查询)
         if cypher_query.upper().startswith('MATCH') and 'RETURN' not in cypher_query.upper():
@@ -75,10 +75,10 @@ class RuleBasedValidator:
 
         # 检查是否包含潜在危险操作
         dangerous_patterns = [
-            (r'(?i)drop\s+', "DROP操作可能危险 😨"),
-            (r'(?i)delete\s+', "DELETE操作需要谨慎 🤔"),
-            (r'(?i)detach\s+delete', "DETACH DELETE操作非常危险 ‼"),
-            (r'(?i)remove\s+', "REMOVE操作需要谨慎 🤔"),
+            (r'(?i)drop\s+', "DROP操作可能危险"),
+            (r'(?i)delete\s+', "DELETE操作需要谨慎"),
+            (r'(?i)detach\s+delete', "DETACH DELETE操作非常危险"),
+            (r'(?i)remove\s+', "REMOVE操作需要谨慎"),
         ]
 
         for pattern, message in dangerous_patterns:

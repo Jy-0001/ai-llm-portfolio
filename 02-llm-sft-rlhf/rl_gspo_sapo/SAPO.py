@@ -1,76 +1,15 @@
-# SAPO算法(Soft Adaptive Policy Optimization)
-    # 解释：在grpo的基础上，摒弃clip，将重要性采样ratio送进平滑函数fi,t()，结果与A相乘，再对token取平均、对组取平均
-    # 特点：引⼊⼀个平滑, 温度可控的软⻔控机制, 替代硬截断（clip）:
-        # 当某个token的重要性⽐接近 1 (即 "on-policy") 时, 梯度完整保留.
-        # 当偏离增⼤时, 梯度被连续衰减⽽⾮突变为零, 从⽽构建⼀个 "软信任域".
-    # 算法细节：详见课件pdf
-        # 公式：J(θ)=Eq∼D,{yi​}i=1G​∼πθold​​(⋅∣q) {1/G * ​i=1∑G 1/|yi|1​t=1∑|yi|​fi,t​(ri,t​(θ))Ai}​
-            # soft gate：​fi,t​(x) = σ(τi,t​(x−1)) * 4 / τi,t​
-                # σ(⋅):sigmoid函数：σ(x)=1+e−x1​
-                    # 特点：
-                        # 输入很小 → 输出接近 0
-                        # 输入适中 → 输出平滑变化
-                        # 输入很大 → 输出接近 1
-                # x-1:因为ri,t​(θ)(ratio)中心点是1
-                # τi,t：温度参数
-                    # 公式：τi,t = τpos​,​if A^i​>0
-                    #              τneg​,otherwise
-                        # 含义：如果这条回答A是正的，用τpos。如果这条回答A是负的，用τneg
-                # 4：因为x=0时σ函数导数为0.25，为了抵消而乘一个4
-            # Ai(实际为A尖i)：GRPO公式同款序列级粒度优势函数A，计算序列组内平均回报，并非序列间组
-            # ri,t​(θ)：GRPO公式同款ratio，表示第i条回答第t个token的重要性采样比率
-                # ri,t = 1：没变
-                # ri,t > 1：新策略更偏向这个token
-                # ri,t < 1：新策略更不偏向这个token
-        # 公式求导后的梯度形式：
-            # 公式：∇θJ(θ)=Eq∼D,{yi}i=1G∼πθold(⋅|q) [ 1/G * i=1∑G 1/|yi| * t=1∑|yi| wi,t(θ) * ri,t(θ) * A^i * ∇θ log πθ(yi,t | q, yi,<t) ]
-                # 含义：目标函数对参数θ求导后，真正更新参数时看的不是fi,t()本身，而是每个token对应的梯度项
-                # 结构拆解：
-                    # wi,t(θ)：soft gate求导后自然产生的权重项，决定这个token的梯度保留多少
-                    # ri,t(θ)：第i条回答第t个token的重要性采样比率
-                    # A^i：第i条回答的序列级优势，表示这条回答整体好不好
-                    # ∇θ log πθ(yi,t | q, yi,<t)：第i条回答第t个token的log概率对参数θ的梯度，是真正推动参数更新的部分
-                # 直觉：SAPO最终是在“原始policy gradient”的前面，又乘了一个平滑权重wi,t(θ)
-                    # 如果某个token比较正常(on-policy)，这个权重大，梯度保留
-                    # 如果某个token偏得很远(off-policy)，这个权重变小，梯度被衰减
-            # 为什么会多出wi,t(θ)：
-                # 因为目标函数里不是直接写ri,t(θ)，而是写fi,t(ri,t(θ)))
-                # 对θ求导时要用链式法则：
-                    # ∂/∂θ fi,t(ri,t(θ)) = fi,t'(ri,t(θ)) * ∂ri,t(θ)/∂θ
-                # 其中：
-                    # fi,t'(ri,t(θ)) 就变成了后面的 wi,t(θ)
-                    # ∂ri,t(θ)/∂θ 会变成 ri,t(θ) * ∇θ log πθ(yi,t | q, yi,<t)
-            # ri,t(θ)为什么求导后会变成 ri,t(θ) * ∇θ log πθ(...)：
-                # 因为 ratio = πθ / πθold
-                # 分母πθold与当前参数θ无关，所以只对分子求导
-                # 利用恒等式：∇θ πθ = πθ * ∇θ log πθ
-                # 因此：∇θ ri,t(θ) = ri,t(θ) * ∇θ log πθ(yi,t | q, yi,<t)
-            # wi,t(θ)的公式：
-                # 公式：wi,t(θ) = 4 * pi,t(θ) * (1 - pi,t(θ))
-                # 其中：pi,t(θ) = σ(τi,t(ri,t(θ)-1))
-                # 含义：wi,t(θ)本质上就是sigmoid导数形状对应的权重项
-                    # 当ri,t(θ)接近1时，pi,t≈0.5，wi,t最大
-                    # 当ri,t(θ)远离1时，pi,t趋近0或1，wi,t变小
-            # wi,t(θ)的性质：
-                # 当ri,t(θ)=1时：
-                    # pi,t(θ)=σ(0)=0.5
-                    # wi,t(θ)=4*0.5*(1-0.5)=1
-                    # 含义：当token正好on-policy时，梯度完整保留，不缩放
-                # 当ri,t(θ)偏离1越来越远时：
-                    # wi,t(θ)会平滑下降到接近0
-                    # 含义：不是像clip一样直接截断，而是连续衰减
-            # 所以SAPO的核心：
-                # 不是“超过边界就把梯度砍掉”
-                # 而是“根据每个token偏离1的程度，给这个token的梯度乘一个连续变化的权重”
-                # 这就是token级别的软门控
-            # 和GRPO/GSPO的区别：
-                # GRPO：token级ratio + hard clip，超界后梯度直接被截断
-                # GSPO：sequence级ratio，整条序列共用一个ratio
-                # SAPO：token级ratio + soft gate，只对偏离严重的token逐个衰减，不连坐整条序列
-    # 代码实现：
-'''导入需要的库'''
+"""SAPO (Soft Adaptive Policy Optimization).
+
+A GRPO variant that replaces PPO's hard clip with a smooth, temperature-tunable
+soft gate f(r) = sigmoid(tau * (r - 1)) * (4 / tau). Token ratios near 1 keep
+their full gradient; ratios that drift are continuously attenuated rather than
+zeroed, forming a soft trust region. An asymmetric temperature (tau_pos for
+positive advantage, tau_neg > tau_pos for negative) suppresses bad off-policy
+samples faster.
+"""
+import logging
+
 import copy
-# import gym
 import gymnasium
 import torch
 import torch.nn as nn
@@ -78,10 +17,15 @@ import torch.nn.functional as F
 import numpy as np
 import matplotlib.pyplot as plt
 import random
-from tqdm import tqdm
 import rl_utils_sapo
 
-'''实现策略网络'''
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s | %(levelname)-8s | %(name)s | %(message)s",
+)
+logger = logging.getLogger(__name__)
+
+
 class PolicyNet(nn.Module):
     def __init__(self, state_dim, hidden_dim, action_dim):
         super(PolicyNet, self).__init__()
@@ -92,7 +36,7 @@ class PolicyNet(nn.Module):
         out = F.softmax(self.fc2(out), dim=1)
         return out
     
-'''SAPO算法'''
+# SAPO agent
 class SAPO:
     def __init__(self, state_dim, hidden_dim, action_dim, actor_lr,epochs, gamma, beta, tau_pos, tau_neg, device):
         # tau_pos: 正优势样本的温度系数 (例如 1.0)
@@ -144,9 +88,7 @@ class SAPO:
             probs = self.actor(states)
             log_probs = torch.log(probs.gather(1, actions) + 1e-10)
 
-            '''SAPO核心实现'''
-            # 计算重要性采样⽐率 r_t(\theta)
-            # ratio = exp(new_log - old_log)
+            # Importance-sampling ratio r_t = exp(new_log - old_log)
             ratio = torch.exp(log_probs - old_log_probs)
 
             # 确定⾮对称温度 tau (Asymmetric Temperature)
@@ -182,7 +124,6 @@ class SAPO:
             loss.backward()
             self.optimizer.step()
 
-'''训练主代码'''
 if __name__ == '__main__':
     # --- 超参数配置 ---
     actor_lr = 1e-3
@@ -202,14 +143,10 @@ if __name__ == '__main__':
 
     # 设备检测
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    if torch.cuda.is_available():
-        device = torch.device('cuda')
-    print(f'Using device:{device}')
+    logger.info("Using device: %s", device)
 
-    # 环境设置
     env_name = 'CartPole-v1'
-    # env = gym.make(env_name) # 训练不渲染
-    env = gymnasium.make(env_name) # 训练不渲染
+    env = gymnasium.make(env_name)
 
     # 设置随机种⼦
     random.seed(0)

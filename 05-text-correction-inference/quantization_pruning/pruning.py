@@ -5,4 +5,3 @@
         # 多参数模块的剪枝(Pruning multiple parameters).
         # 全局剪枝(GLobal pruning).
         # ⽤户⾃定义剪枝(Custom pruning).
-#细节见课件pdf4_1(1)

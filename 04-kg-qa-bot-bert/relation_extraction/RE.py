@@ -3,7 +3,7 @@
     
     # 说明：可以将NER任务和RE任务合⼆为⼀, 作为⼀个整体来看待, 这也是多头的意义所在
         # 原理：基于尾部对齐（Tail-to-Tail）的多头选择机制。模型建立从“主体实体尾部（关系的发起者） Token（Subject Tail）”到“客体实体尾部（关系的接受者） Token（Object Tail）”的映射，并在对应的多维得分矩阵中编码关系类别（Relation Label）。
-    # 架构（论文）：架构图见课件pdf
+    # Architecture:
         # Embedding Layer
         # BiLSTM Layer
         # CRF Layer

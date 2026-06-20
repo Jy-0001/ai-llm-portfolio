@@ -1,31 +1,37 @@
 import os
-from dotenv import load_dotenv
-load_dotenv()
-from tqdm import tqdm
 import json
 import uuid
 import time
+import logging
+
+from dotenv import load_dotenv
+from tqdm import tqdm
 import redis
-import os
 from zai import ZhipuAiClient
 from langchain.embeddings.base import Embeddings
 from langchain_core.documents import Document
 from langchain_milvus import Milvus, BM25BuiltInFunction
 
+load_dotenv()
+logger = logging.getLogger(__name__)
 
-# redis处理模块
+
 def get_redis_client():
-    # 创建Redis连接, 使用连接池 (推荐用于生产环境)
-    pool = redis.ConnectionPool(host='0.0.0.0', port=6379, db=0, password=None, max_connections=10)
+    # Connection pool (recommended for production)
+    pool = redis.ConnectionPool(
+        host=os.getenv("REDIS_HOST", "0.0.0.0"),
+        port=int(os.getenv("REDIS_PORT", "6379")),
+        db=0,
+        password=os.getenv("REDIS_PASSWORD") or None,
+        max_connections=10,
+    )
     r = redis.StrictRedis(connection_pool=pool)
 
-    # 测试连接
     try:
         r.ping()
-        print("成功连接到 Redis ✅!")
-    # except r.ConnectionError:
+        logger.info("Connected to Redis")
     except redis.ConnectionError:
-        print("无法连接到 Redis ❌!")
+        logger.error("Failed to connect to Redis")
 
     return r
 
@@ -40,8 +46,6 @@ def cache_set(r, question: str, answer: str):
 def cache_get(r, question: str):
     return r.hget("qa", question)
 
-os.environ["ZHIPU_API_KEY"] = os.getenv("ZHIPU_API_KEY")
-# 实例化智谱client对象
 client = ZhipuAiClient(api_key=os.getenv("ZHIPU_API_KEY"))
 
 
@@ -52,16 +56,11 @@ class ZhipuAIEmbeddings(Embeddings):
     def embed_documents(self, texts):
         embeddings = []
         for text in texts:
-            # 调用清华智谱最新版本的 embeddings 方法
-            response = self.client.embeddings.create(
-                model="embedding-3",
-                input=[text],
-            )
+            response = self.client.embeddings.create(model="embedding-3", input=[text])
             embeddings.append(response.data[0].embedding)
         return embeddings
 
     def embed_query(self, text):
-        # 查询文档
         return self.embed_documents([text])[0]
 
 
@@ -94,7 +93,7 @@ class Milvus_vector():
             consistency_level="Bounded",  # 支持 ("Strong", "Session", "Bounded", "Eventually")
             drop_old=False,
         )
-        print("✅ 已初始化创建 Milvus ‼")
+        logger.info("Milvus collection initialized")
 
         count = 10
         temp = []
@@ -104,11 +103,10 @@ class Milvus_vector():
                 self.vectorstore.aadd_documents(temp)
                 count += len(temp)
                 temp = []
-                print(f"已插入 {count} 条数据......")
+                logger.info("Inserted %d documents", count)
                 time.sleep(1)
 
-        print(f"总共插入 {count} 条数据......")
-        print("✅ 已创建 Milvus 索引完成 ‼")
+        logger.info("Total %d documents inserted; Milvus index built", count)
 
         return self.vectorstore
 
@@ -129,25 +127,18 @@ def prepare_document(file_path=['./data/data.jsonl', './data/train.jsonl']):
             docs.append(temp_doc)
             count += 1
 
-    print(f"✅ 已加载 {count} 条数据!")
+    logger.info("Loaded %d documents", count)
 
     return docs
 
 
 if __name__ == "__main__":
-    # 预处理即将插入 Milvus 的文档数据
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s | %(levelname)-8s | %(name)s | %(message)s",
+    )
     docs = prepare_document()
-    print("预处理文档数据成功......")
-
-    # 创建 Milvus 连接
     milvus_vectorstore = Milvus_vector(client)
-    print("创建Milvus连接成功......")
-
-    # 创建向量索引
     vectorstore = milvus_vectorstore.create_vector_store(docs)
-
-    r = get_redis_client()
-    print("创建Redis连接成功......")
-    print(r)
-
-    print("全部初始化完成, 可以开始问答了......")
+    get_redis_client()
+    logger.info("Initialization complete")

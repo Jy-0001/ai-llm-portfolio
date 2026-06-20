@@ -1,6 +1,6 @@
 # Albert模型：< A Lite BERT For Self-Supervised Learning Of Language Representations
     #是基于BERT的重要改进版本
-    #参数共享：因为每一层共享了参数，使得albert在词嵌入层，每一层的输入和输出的定量距离相比bert更加平滑（见课件pdf
+    #参数共享：因为每一层共享了参数，使得albert在词嵌入层，每一层的输入和输出的定量距离相比bert更加平滑
         #问题：AlBERT模型把整个12层的参数都共享了，层数变化还有区别吗？
             #回答：有，同一个矩阵跟输入进行1次运算和进行12次运算，有区别
     #相较于Bert的优化点：出发点是希望降低预训练的难度, 同时提升模型关键能⼒

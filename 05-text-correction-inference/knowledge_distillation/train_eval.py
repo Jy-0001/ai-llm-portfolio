@@ -37,9 +37,9 @@ def loss_fn_kd(outputs, labels, teacher_outputs):
     T = 2 #温度系数
     output_student = F.log_softmax(outputs / T, dim=1) #学生网络带有温度系数的log_sofrmax输出分布
     output_teacher = F.softmax(outputs / T, dim=1) #教师网络带有温度系数的sofrmax输出分布
-    '''软目标损失（学生和老师）'''
-    soft_loss = criterion(output_student, output_teacher) #使用KLDicloss(), 第一个参数为student网络输出, 第二个参数为teacher网络输出
-    '''硬目标损失（学生和硬标签）'''
+    # Soft-target loss (student vs teacher distribution, via KLDivLoss)
+    soft_loss = criterion(output_student, output_teacher)
+    # Hard-target loss (student vs ground-truth labels)
     hard_loss = F.cross_entropy(outputs, labels) #即学生网络的输出概率和真实标签之间的损失，因为真实标签是one-hot编码，因此直接用交叉熵损失函数
     '''总损失'''
     KD_loss = soft_loss * alpha * T * T + hard_loss * (1.0 - alpha) #由于引入T会导致致软⽬标产⽣的梯度和真实⽬标产⽣的梯度有1/(T*T)的偏差，因此计算完要乘以T^2

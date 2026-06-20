@@ -23,7 +23,7 @@ def evaluate(model, dev_loader):
         
     # with torch.no_grad():
     #     feats = model.get_output_score(sentence, masks)   # [B,L,tagset_size+2]
-    #     feats = feats[:, :, :-2]                          # ✅ 砍掉 CRF 的 start/end 两维
+    #     feats = feats[:, :, :-2]                          # drop CRF start/end dims
     #     predict_tags = feats.argmax(dim=-1)               # 现在只在真实标签空间里选
 
 

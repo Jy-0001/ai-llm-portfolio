@@ -171,11 +171,11 @@ class ModelEvaluator:
         improvement = ((ft_score - base_score) / base_score * 100) if base_score != 0 else float('inf')
 
         if ft_score > base_score * 1.05:
-            analysis = "显著提升 ✅"
+            analysis = "improved"
         elif ft_score < base_score * 0.95:
-            analysis = "显著下降 ❌"
+            analysis = "regression"
         else:
-            analysis = "基本持平 ➡️"
+            analysis = "no significant change"
 
         return {
             "summary": {

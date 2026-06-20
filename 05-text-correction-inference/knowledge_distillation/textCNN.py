@@ -51,7 +51,7 @@ class model(nn.Module):
         out = self.fc(out)
         return out
 
-    #训练函数：对照知识蒸馏结构图(见课件pdf)，代码见./train_eval.py
+    # 训练函数见 ./train_eval.py
         #导入相关工具包
         #编写获取Teacher网络输出的函数
         #编写损失值的计算函数
